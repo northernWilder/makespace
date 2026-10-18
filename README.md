@@ -25,7 +25,13 @@ drafts live in memory only: leaving or reloading the page clears them.
 2. Run [the database migration](supabase/migrations/202610180001_toolbook.sql)
    in the Supabase SQL editor (or apply it with the Supabase CLI).
 3. Enable the Email provider in Authentication. The app uses passwordless
-   email links and permits new-account creation.
+   email links for **existing accounts only** (`shouldCreateUser: false`).
+   In Authentication settings, turn **Allow new users to sign up** off and
+   save. This server-side setting is essential: the app setting alone does not
+   stop someone calling the public Auth API directly.
+   In Authentication → Users, create or invite only your own account if it
+   does not already exist. Review existing users and remove any unauthorized
+   accounts; disabling sign-ups does not remove existing accounts or sessions.
 4. Set the Authentication Site URL to the deployed app URL. Add exact local
    and production app URLs to the allowed redirect list, e.g.
    `http://127.0.0.1:5173` and `https://your-toolbook.example`.
@@ -54,7 +60,13 @@ account's entries appear or can be read/modified via the API.
 - **Positive Y is right; negative Y is left.** Positive Z lifts the tool.
 - The **left** switch is adjustable; the right is the fixed reference.
 - Points: 1 rear left, 2 rear right, 3 front right, 4 front left.
-- A = 1 to 3. B = 2 to 4. All distances are in **millimeters**.
+- A = 1 to 3. B = 2 to 4. Use the **mm / inches** toggle for measurement
+  inputs, live distances, warning details, and saved calibration displays.
+  Inches accept decimals (`42.375`), fractions (`3/8`), and mixed numbers
+  (`42 3/8`). Invalid fractions, including zero denominators, show an error.
+  Switching units converts existing values rather than reinterpreting them.
+  Calculations and cloud snapshots remain in millimeters, including older
+  records. Repeated toggles do not round the underlying measurements.
 - W is the **commanded test width**: controller travel left to right along the
   gantry, not the bed width or a tape-measured horizontal projection.
 - L is the **commanded test length**: controller rear-front X travel, not the bed
@@ -109,6 +121,10 @@ in Mach3; downloading does not execute any motion.
 
 - Width and length default to **1000 mm each** and are adjustable in the same
   fields used by the calculator.
+- G-code remains **G21 / millimeters** regardless of the display toggle.
+  Converted pattern moves are rounded to 0.001 mm; feeds are explicitly in
+  mm/min and fixed Z depth/clearance remain -1/+10 mm. Free-text notes, settings,
+  and protocols are not automatically converted.
 - The current X/Y position is **point 1 (rear left)**; no X/Y zeroing is needed.
 - In the intended work coordinate system with the marker fitted and intended
   tool-length compensation established, touch off using the approved procedure.

@@ -37,7 +37,7 @@ export function calculate(inputs: CalibrationInputs): CalibrationResult {
   if (entries.some((value) => !Number.isFinite(Number(value))) ||
       [width, length, switchSpan, diagonalA, diagonalB].some((value) => value <= 0) ||
       tolerance < 0) {
-    return { status: 'invalid', message: 'Enter finite, positive distances. The diagonal tolerance may be zero.' };
+    return { status: 'invalid', message: 'Enter valid, positive distances. In inches, use decimals, fractions like 3/8, or mixed numbers like 42 3/8; fraction denominators must not be zero. The diagonal tolerance may be zero.' };
   }
   const sinAngle = ((diagonalA - diagonalB) * (diagonalA + diagonalB)) / (4 * width * length);
   if (!Number.isFinite(sinAngle) || Math.abs(sinAngle) >= 1 ||

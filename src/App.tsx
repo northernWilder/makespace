@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { calculate, correctionDirection, formatMm, initialInputs, type CalibrationInputs, type CalibrationResult } from './calibration';
+import { calculate, correctionDirection, initialInputs, type CalibrationInputs, type CalibrationResult } from './calibration';
+import { formatDistance, inputsForDisplay, inputToMm, type Unit } from './units';
 import { cloud, type Entry, type EntryKind } from './cloud';
 import MarkingGuide from './MarkingGuide';
 
@@ -18,7 +19,8 @@ const inputLabels: Record<keyof CalibrationInputs, string> = {
 function Icon({ name, size = 20 }: { name: string; size?: number }) {
   const paths: Record<string, string> = {
     grid: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
-    square: 'M4 4h16v16H4z M4 4l16 16 M20 4L4 20',
+    square: 'M4 3h5v12h12v6H4V3Z M4 8h2 M4 12h2 M4 16h2 M13 18v3 M17 18v3',
+    router: 'M3 21V4 M21 21V4 M3 7h18 M3 17h18 M8 5h8v6H8V5Z M12 11v4 M6 21h12',
     clock: 'M12 8v5l3 2 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
     note: 'M5 3h14v18H5z M8 8h8 M8 12h8 M8 16h5',
     setting: 'M4 7h16 M4 17h16 M8 4v6 M16 14v6',
@@ -72,7 +74,22 @@ function BedDiagram({ result }: { result: CalibrationResult }) {
 
 function App() {
   const [tab, setTab] = useState<Tab>('calibration');
-  const [inputs, setInputs] = useState(initialInputs);
+  const [inputs, setCanonicalInputs] = useState(initialInputs);
+  const [displayInputs, setDisplayInputs] = useState(initialInputs);
+  const [unit, setUnit] = useState<Unit>('mm');
+  const distance = (value: number) => formatDistance(value, unit);
+  function setInputs(next: CalibrationInputs) {
+    setCanonicalInputs(next);
+    setDisplayInputs(inputsForDisplay(next, unit));
+  }
+  function changeMeasurement(key: keyof CalibrationInputs, value: string) {
+    setDisplayInputs((current) => ({ ...current, [key]: value }));
+    setCanonicalInputs((current) => ({ ...current, [key]: inputToMm(value, unit) }));
+  }
+  function changeUnit(next: Unit) {
+    setUnit(next);
+    setDisplayInputs(inputsForDisplay(inputs, next));
+  }
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(!cloud);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -138,10 +155,13 @@ function App() {
     setError('');
     const { error: authError } = await cloud.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` },
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}${window.location.pathname}`,
+      },
     });
     if (authError) setError(`Could not send sign-in link: ${authError.message}`);
-    else setAuthMessage('Check your email for a sign-in link. Open it on this device to continue. New here? The link creates your account, too.');
+    else setAuthMessage('If this email belongs to an existing account, check your inbox for a sign-in link. Open it on this device to continue. Public account registration is not available.');
     setAuthBusy(false);
   }
 
@@ -224,10 +244,10 @@ function App() {
     return <div className="entry-list">{filtered.map((entry) => <article className="saved-entry" key={entry.id}>
       <div className="entry-heading"><h3>{entry.title}</h3><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString()}</time></div>
       {entry.calibration && <div className="snapshot">
-        <span>A: <strong>{entry.calibration.inputs.diagonalA} mm</strong></span><span>B: <strong>{entry.calibration.inputs.diagonalB} mm</strong></span>
-        <span>Difference: <strong>{formatMm(entry.calibration.difference)} mm</strong></span>
-        <span>Calculated left switch correction: <strong>{formatMm(Math.abs(entry.calibration.adjustment))} mm — {correctionDirection(entry.calibration.adjustment)}</strong></span>
-        <span>Test: {entry.calibration.inputs.width} × {entry.calibration.inputs.length} mm · homing span: {entry.calibration.inputs.switchSpan} mm · tolerance: {entry.calibration.inputs.tolerance} mm</span>
+        <span>A: <strong>{distance(Number(entry.calibration.inputs.diagonalA))} {unit}</strong></span><span>B: <strong>{distance(Number(entry.calibration.inputs.diagonalB))} {unit}</strong></span>
+        <span>Difference: <strong>{distance(entry.calibration.difference)} {unit}</strong></span>
+        <span>Calculated left switch correction: <strong>{distance(Math.abs(entry.calibration.adjustment))} {unit} — {correctionDirection(entry.calibration.adjustment)}</strong></span>
+        <span>Test: {distance(Number(entry.calibration.inputs.width))} × {distance(Number(entry.calibration.inputs.length))} {unit} · homing span: {distance(Number(entry.calibration.inputs.switchSpan))} {unit} · tolerance: {distance(Number(entry.calibration.inputs.tolerance))} {unit}</span>
         <span>{entry.calibration.geometryWarning ? 'Check geometry before adjusting' : entry.calibration.withinTolerance ? 'Within diagonal tolerance' : 'Outside diagonal tolerance'}</span>
       </div>}
       {entry.body && <p className="entry-body">{entry.body}</p>}
@@ -244,7 +264,7 @@ function App() {
       <a className="brand" href="./" aria-label="Makespace toolbook home"><span className="brand-mark"><Icon name="grid" size={24} /></span>makespace<span className="brand-dot">.</span></a>
       <div className="workspace-label">THE WORKSHOP TOOLBOOK</div>
       <div className="sidebar-section-label">YOUR MACHINES <span>01</span></div>
-      <div className="machine-selected"><Icon name="square" /><span>CNC router<small>Gantry / dual homing</small></span><span className="machine-status" /></div>
+      <div className="machine-selected"><Icon name="router" /><span>CNC router<small>Gantry / dual homing</small></span><span className="machine-status" /></div>
       <nav aria-label="CNC router aids">
         <div className="nav-group-label">MACHINE AIDS</div>
         <button className={tab === 'calibration' ? 'nav-item active' : 'nav-item'} onClick={() => switchTab('calibration')}><Icon name="square" />Gantry squaring</button>
@@ -263,9 +283,9 @@ function App() {
         {accountOpen && <section className="card account-panel" aria-labelledby="account-title"><div className="section-heading"><h2 id="account-title">{session ? 'Your cloud toolbook' : 'Take your toolbook with you'}</h2><button className="text-button" onClick={() => setAccountOpen(false)}>Close</button></div>
           {!cloud ? <div className="message setup"><strong>Cloud connection needs setup.</strong><p>The calculator works now. To enable sign-in and storage, configure the Supabase project described in the project README. Nothing is saved until it is connected.</p></div>
             : session ? <><p>Signed in as <strong>{session.user.email}</strong>. Your records are private to your account and available on your other devices.</p><button className="button secondary" onClick={() => void signOut()}>Sign out</button></>
-              : <form onSubmit={(event) => void signIn(event)}><p>Get an email sign-in link. No password to remember. Your notes and calibrations stay private to your account.</p><div className="auth-form"><label>Email address<input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" /></label><button className="button primary" disabled={authBusy || !authReady}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button></div>{authMessage && <p role="status" className="auth-message">{authMessage}</p>}</form>}
+              : <form onSubmit={(event) => void signIn(event)}><p>Owner sign-in only. Get an email link for your existing account; this form does not create accounts. Your notes and calibrations stay private to your account.</p><div className="auth-form"><label>Email address<input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" /></label><button className="button primary" disabled={authBusy || !authReady}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button></div>{authMessage && <p role="status" className="auth-message">{authMessage}</p>}</form>}
         </section>}
-        <div className="page-tabs" role="navigation" aria-label="Calibration views"><button className={tab === 'calibration' ? 'selected' : ''} onClick={() => switchTab('calibration')}><Icon name="square" size={17} />Squaring calculator</button><button className={tab === 'history' ? 'selected' : ''} onClick={() => switchTab('history')}><Icon name="clock" size={17} />History</button><span className="units-label">ALL MEASUREMENTS IN mm</span></div>
+        <div className="page-tabs" role="navigation" aria-label="Calibration views"><button className={tab === 'calibration' ? 'selected' : ''} onClick={() => switchTab('calibration')}><Icon name="square" size={17} />Squaring calculator</button><button className={tab === 'history' ? 'selected' : ''} onClick={() => switchTab('history')}><Icon name="clock" size={17} />History</button><div className="unit-toggle"><span className="unit-toggle-label">Display units</span><button className="unit-switch" role="switch" aria-checked={unit === 'in'} aria-label="Display units in inches" onClick={() => changeUnit(unit === 'mm' ? 'in' : 'mm')}><span className={unit === 'mm' ? 'unit-current' : ''}>mm</span><span className="unit-switch-track" aria-hidden="true"><span /></span><span className={unit === 'in' ? 'unit-current' : ''}>inches</span></button></div></div>
         {tab === 'calibration' ? <>
           <div className="calibration-layout">
             <div className="calculator-column">
@@ -273,15 +293,16 @@ function App() {
                 <div className="section-heading"><div className="heading-with-step"><span className="step-badge">01</span><h2>Set up your test</h2></div><span className="subtle-label">Use the largest practical rectangle</span></div>
                 <p className="section-description"><strong>Width & length: use the CNC controller.</strong> Enter the commanded travel between corner marks (the difference between their controller coordinates), not the overall bed size or tape-measured projections. Keep every mark safely inside the travel limits.</p>
                 <div className="input-grid">
-                  {(['width', 'length', 'switchSpan'] as const).map((key) => <label key={key} htmlFor={key}>{inputLabels[key]}<div className="input-with-unit"><input id={key} type="number" min="0.001" step="any" value={inputs[key]} onChange={(event) => setInputs({ ...inputs, [key]: event.target.value })} /><span>mm</span></div><small>{key === 'width' ? 'From controller: +Y right / −Y left along gantry' : key === 'length' ? 'From controller: +X front / −X rear' : 'Physically measure between left/right homing contacts, along gantry'}</small></label>)}
+                  {(['width', 'length', 'switchSpan'] as const).map((key) => <label key={key} htmlFor={key}>{inputLabels[key]}<div className="input-with-unit"><input id={key} type={unit === 'in' ? 'text' : 'number'} min="0" step="any" value={displayInputs[key]} onChange={(event) => changeMeasurement(key, event.target.value)} /><span>{unit}</span></div><small>{key === 'width' ? 'From controller: +Y right / −Y left along gantry' : key === 'length' ? 'From controller: +X front / −X rear' : 'Physically measure between left/right homing contacts, along gantry'}</small></label>)}
                 </div>
+                {unit === 'in' && <p className="section-description"><strong>Tip:</strong> Enter mixed fractions like <strong>42 3/8</strong>, simple fractions like <strong>3/8</strong>, or decimal inches.</p>}
                 <div className="measurement-divider" />
                 <div className="section-heading"><div className="heading-with-step"><span className="step-badge">02</span><h2>Measure the diagonals</h2></div><button className="text-button" onClick={() => { setInputs({ width: '1000', length: '1500', switchSpan: '1250', diagonalA: '1803.8', diagonalB: '1801.8', tolerance: '0.5' }); setNotice('Example measurements loaded — replace them with your actual measurements before adjusting.'); }}>Try an example <Icon name="arrow" size={14} /></button></div>
                 <p className="section-description"><strong>Diagonals: physically measure with a tape.</strong> Measure between brad centers, at the same height and tape tension. Do not use controller-calculated diagonals.</p>
                 <div className="diagonal-inputs">
-                  {(['diagonalA', 'diagonalB'] as const).map((key, index) => <label htmlFor={key} key={key}><span className={`diagonal-chip ${index ? 'b' : 'a'}`}>{index ? 'B' : 'A'}</span>{inputLabels[key]}<span className="corner-pair">{index ? '2 → 4' : '1 → 3'}</span><div className="input-with-unit"><input id={key} type="number" min="0.001" step="any" placeholder="0.00" value={inputs[key]} onChange={(event) => setInputs({ ...inputs, [key]: event.target.value })} /><span>mm</span></div><small>{index ? 'Rear right → front left' : 'Rear left → front right'}</small></label>)}
+                  {(['diagonalA', 'diagonalB'] as const).map((key, index) => <label htmlFor={key} key={key}><span className={`diagonal-chip ${index ? 'b' : 'a'}`}>{index ? 'B' : 'A'}</span>{inputLabels[key]}<span className="corner-pair">{index ? '2 → 4' : '1 → 3'}</span><div className="input-with-unit"><input id={key} type={unit === 'in' ? 'text' : 'number'} min="0" step="any" placeholder={unit === 'in' ? 'e.g. 55 3/4' : '0.00'} value={displayInputs[key]} onChange={(event) => changeMeasurement(key, event.target.value)} /><span>{unit}</span></div><small>{index ? 'Rear right → front left' : 'Rear left → front right'}</small></label>)}
                 </div>
-                <div className="tolerance-row"><label htmlFor="tolerance">Acceptable diagonal difference</label><div className="input-with-unit"><input id="tolerance" type="number" min="0" step="any" value={inputs.tolerance} onChange={(event) => setInputs({ ...inputs, tolerance: event.target.value })} /><span>mm</span></div></div>
+                <div className="tolerance-row"><label htmlFor="tolerance">Acceptable diagonal difference</label><div className="input-with-unit"><input id="tolerance" type={unit === 'in' ? 'text' : 'number'} min="0" step="any" value={displayInputs.tolerance} onChange={(event) => changeMeasurement('tolerance', event.target.value)} /><span>{unit}</span></div></div>
               </section>
               {result.status === 'invalid' && <section className="measurement-warning" role="alert" aria-labelledby="measurement-warning-title">
                 <h2 id="measurement-warning-title">Check your measurements</h2>
@@ -291,17 +312,17 @@ function App() {
               <section className={`result-card ${result.status === 'valid' && !result.geometryWarning && result.withinTolerance ? 'is-square' : ''}`} aria-labelledby="result-title">
                 <div className="section-heading"><div className="heading-with-step"><span className="step-badge">03</span><h2 id="result-title">Your adjustment</h2></div><span className="live-label"><span />LIVE RESULT</span></div>
                 <div aria-live="polite" aria-atomic="true">
-                  {result.status === 'incomplete' ? <div className="result-placeholder"><span className="result-number">— <small>mm</small></span><h3>Ready when you are.</h3><p>Enter both diagonals to calculate the left switch adjustment.</p></div>
-                    : result.status === 'invalid' ? <div className="result-placeholder"><span className="result-number">— <small>mm</small></span><h3>Waiting for corrected measurements.</h3></div>
-                      : <><div className="result-main"><div><span className="result-caption">LEFT SWITCH CORRECTION</span><div className="result-number">{formatMm(Math.abs(result.adjustment))}<small> mm</small></div></div>
+                  {result.status === 'incomplete' ? <div className="result-placeholder"><span className="result-number">— <small>{unit}</small></span><h3>Ready when you are.</h3><p>Enter both diagonals to calculate the left switch adjustment.</p></div>
+                    : result.status === 'invalid' ? <div className="result-placeholder"><span className="result-number">— <small>{unit}</small></span><h3>Waiting for corrected measurements.</h3></div>
+                      : <><div className="result-main"><div><span className="result-caption">LEFT SWITCH CORRECTION</span><div className="result-number">{distance(Math.abs(result.adjustment))}<small> {unit}</small></div></div>
                         {result.geometryWarning ? <span className="measurement-tooltip-anchor" onMouseEnter={() => setMeasurementTooltipOpen(true)} onMouseLeave={() => setMeasurementTooltipOpen(false)} onFocus={() => setMeasurementTooltipOpen(true)} onBlur={() => setMeasurementTooltipOpen(false)} onKeyDown={(event) => { if (event.key === 'Escape') { setMeasurementTooltipOpen(false); event.stopPropagation(); } }}>
                           <span className="result-state warning" tabIndex={0} aria-describedby={measurementTooltipOpen ? 'measurement-tooltip' : undefined} onClick={(event) => { event.currentTarget.focus(); setMeasurementTooltipOpen(true); }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3L22 21H2L12 3Z M12 9v5 M12 17v.1" /></svg>Check measurements</span>
-                          {measurementTooltipOpen && <span className="measurement-tooltip" id="measurement-tooltip" role="tooltip"><strong>Check your measurements</strong><span>The diagonals do not agree with the entered side lengths. A square rectangle with these dimensions would have {formatMm(result.expectedDiagonal)} mm diagonals. Check dimensions, units, axis scale, and corner labels.</span><strong>This correction is a reference only and is not reliable yet. Check measurements before adjusting.</strong></span>}
+                          {measurementTooltipOpen && <span className="measurement-tooltip" id="measurement-tooltip" role="tooltip"><strong>Check your measurements</strong><span>The diagonals do not agree with the entered side lengths. A square rectangle with these dimensions would have {distance(result.expectedDiagonal)} {unit} diagonals. Check dimensions, units, axis scale, and corner labels.</span><strong>This correction is a reference only and is not reliable yet. Check measurements before adjusting.</strong></span>}
                         </span> : <span className="result-state">{result.withinTolerance ? 'Within tolerance' : 'Adjustment needed'}</span>}
                         </div>
                         <h3>{result.adjustment === 0 ? 'No movement' : result.adjustment > 0 ? 'Forwards (towards front)' : 'Backwards (towards wall)'}</h3>
                         {!result.geometryWarning && <p>{result.withinTolerance ? 'No adjustment is needed for your chosen diagonal tolerance. The calculated correction is shown for reference.' : 'Left means your left when standing at the front facing the machine. Leave the RIGHT switch fixed. This is the required shift of the homing trigger point: verify that moving the switch on its bracket shifts that point in the same direction. Make a small trial move, re-home, and confirm the diagonal difference decreases.'}</p>}
-                        <div className="result-metrics"><span>Diagonal difference<strong>{formatMm(Math.abs(result.difference))} mm</strong></span><span>Gantry skew angle<strong>{result.angle.toFixed(4)}°</strong></span></div>
+                        <div className="result-metrics"><span>Diagonal difference<strong>{distance(Math.abs(result.difference))} {unit}</strong></span><span>Gantry skew angle<strong>{result.angle.toFixed(4)}°</strong></span></div>
                       </>}
                 </div>
                 <p><strong>Direction reference:</strong> Forward (+X) means away from the back of the machine, toward the front. Backward (−X) means toward the back. LEFT is viewed from the front; leave the RIGHT switch fixed. {result.status === 'valid' && result.geometryWarning ? 'Check measurements before applying this reference correction; it is not reliable yet.' : 'Verify that moving the switch shifts its homing trigger point in the same direction.'}</p>

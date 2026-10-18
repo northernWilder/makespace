@@ -6,7 +6,9 @@ export default function MarkingGuide({ width, length }: { width: string; length:
   const [travelFeed, setTravelFeed] = useState('500');
   const [copyMessage, setCopyMessage] = useState('');
   const [copyError, setCopyError] = useState('');
-  const program = markingProgram(width, length, plungeFeed, travelFeed);
+  const programWidth = width.trim() && Number.isFinite(Number(width)) ? String(Number(Number(width).toFixed(3))) : width;
+  const programLength = length.trim() && Number.isFinite(Number(length)) ? String(Number(Number(length).toFixed(3))) : length;
+  const program = markingProgram(programWidth, programLength, plungeFeed, travelFeed);
   const code = program.status === 'valid' ? program.code : null;
   const [downloadUrl, setDownloadUrl] = useState('');
 
@@ -35,6 +37,7 @@ export default function MarkingGuide({ width, length }: { width: string; length:
   return <section className="card marking-card" aria-labelledby="marking-title">
     <div className="section-heading"><h2 id="marking-title">Mach3 · Mark the four corners</h2><span className="view-tag">NON-ROTATING MARKER</span></div>
     <p className="section-description"><strong>Axes from the front:</strong> +X toward you, −X toward the rear; +Y right, −Y left. Positive Z must lift the tool. Pattern offsets use the commanded width and length above, defaulting to 1,000 × 1,000 mm.</p>
+    <p className="section-description"><strong>G-code always uses millimeters (G21).</strong> Inch measurements are converted automatically. Pattern moves are rounded to 0.001 mm. Feeds below remain in mm/min; the fixed impression depth is 1 mm and clearance is 10 mm regardless of display units.</p>
     <ol className="marking-steps">
       <li><strong>Prepare the surface and tool.</strong> Use only your approved non-rotating plunge-marking tool and a sacrificial spoilboard that may receive 1 mm impressions. Keep the spindle off and prevent accidental spindle start under the workshop procedure. Remove all brads, clamps, and other obstructions from the entire path.</li>
       <li><strong>Position at point 1.</strong> Home using the approved procedure, then jog to the rear-left starting mark. The current X/Y position becomes point 1; no X/Y zeroing is needed. Check there is room for +Y width, then +X length, then −Y width, with soft limits enabled and no limit overrides.</li>
@@ -50,7 +53,7 @@ export default function MarkingGuide({ width, length }: { width: string; length:
     <details className="marking-program">
       <summary>Review Mach3 program · 1 → 2 → 3 → 4</summary>
       <p className="section-description">Use as a reviewed program file, or enter motion blocks individually in MDI and wait for each to finish. Keep G90 and G91 on separate lines. This changes modes to mm, absolute positioning at the end, feed per minute, and cancels cutter compensation / canned cycles; it retains your current work offset and tool-length compensation. Check modes before subsequent work.</p>
-      {program.status === 'valid' ? <><pre aria-label="Mach3 marking G-code"><code>{program.code}</code></pre><div className="form-actions"><button className="button secondary" onClick={() => void copyCode()}>Copy reviewed program</button>{downloadUrl && <a className="button secondary" href={downloadUrl} download={`cnc-squaring-${Number(width)}x${Number(length)}mm.tap`} style={{ textDecoration: 'none' }}>Download G-code (.tap)</a>}</div></> : <p role="alert" className="message error">{program.message}</p>}
+      {program.status === 'valid' ? <><pre aria-label="Mach3 marking G-code"><code>{program.code}</code></pre><div className="form-actions"><button className="button secondary" onClick={() => void copyCode()}>Copy reviewed program</button>{downloadUrl && <a className="button secondary" href={downloadUrl} download={`cnc-squaring-${programWidth}x${programLength}mm.tap`} style={{ textDecoration: 'none' }}>Download G-code (.tap)</a>}</div></> : <p role="alert" className="message error">{program.message}</p>}
       {copyMessage && <p role="status">{copyMessage}</p>}
       {copyError && <p role="alert" className="message error">{copyError}</p>}
     </details>
