@@ -39,13 +39,38 @@ export default function MarkingGuide({ width, length }: { width: string; length:
     <p className="section-description"><strong>Axes from the front:</strong> +X toward you, −X toward the rear; +Y right, −Y left. Positive Z must lift the tool. Pattern offsets use the commanded width and length above, defaulting to 1,000 × 1,000 mm.</p>
     <p className="section-description"><strong>G-code always uses millimeters (G21).</strong> Inch measurements are converted automatically. Pattern moves are rounded to 0.001 mm. Feeds below remain in mm/min; the fixed impression depth is 1 mm and clearance is 10 mm regardless of display units.</p>
     <ol className="marking-steps">
-      <li><strong>Prepare the surface and tool.</strong> Use only your approved non-rotating plunge-marking tool and a sacrificial spoilboard that may receive 1 mm impressions. Keep the spindle off and prevent accidental spindle start under the workshop procedure. Remove all brads, clamps, and other obstructions from the entire path.</li>
-      <li><strong>Position at point 1.</strong> Home using the approved procedure, then jog to the rear-left starting mark. The current X/Y position becomes point 1; no X/Y zeroing is needed. Check there is room for +Y width, then +X length, then −Y width, with soft limits enabled and no limit overrides.</li>
-      <li><strong>Set surface Z = 0.</strong> Select the work coordinate system you intend to use and show work coordinates, not Machine Coordinates. With the fitted marker and intended tool-length compensation already established, approach the sacrificial surface using fine step jogging and the approved touch-off method. At actual tip contact, use Mach3's <strong>Zero Z</strong> control only. If using paper or a touch plate, account for its thickness using the approved method; its top is not the bed surface. Do not zero machine coordinates or change the work offset/tool compensation afterward.</li>
-      <li><strong>Verify clearance and depth.</strong> Confirm positive Z lifts, the bed is level across the pattern, Z +10 mm is within travel and clears everything, and Z −1 mm is an approved safe impression depth for this tool and surface. The plunge from +10 to −1 is 11 mm; the retract returns to <strong>10 mm above the surface</strong>, not 10 mm above the impression. If 10 mm cannot clear the path, do not run this program.</li>
-      <li><strong>Review, then single-block.</strong> Set machine-approved feed rates below (mm/min); the defaults are examples, not validated machine settings. Review the program in Mach3 and verify its extents before running in single-block mode. Each point depresses to Z −1, then retracts to Z +10 before X/Y translation. No spindle-start command is included.</li>
-      <li><strong>Finish and measure.</strong> The program ends at point 4 with Z +10 in absolute mode; it does not return to point 1. Park safely using the approved procedure, isolate motion before placing brads, and measure A (1 → 3) and B (2 → 4). Never move with brads installed. For another run, remove brads, re-home, return to point 1 and re-establish the surface Z reference as required.</li>
+      <li><strong>Home the machine.</strong> Press <strong>Ref All Home</strong> in Mach3 using the approved machine procedure.</li>
+      <li><strong>Travel to point 1.</strong> Jog to the rear-left corner of your test pattern with the marker clear of the surface.</li>
+      <li><strong>Touch off on the bed.</strong> Approach the sacrificial bed surface using the approved fine-jog touch-off method.</li>
+      <li><strong>Zero the work Z height.</strong> At actual marker-tip contact with the bed surface, press <strong>Zero Z</strong>.</li>
+      <li><strong>Zero the work X coordinate.</strong> Press <strong>Zero X</strong> at point 1.</li>
+      <li><strong>Zero the work Y coordinate.</strong> Press <strong>Zero Y</strong> at point 1.</li>
+      <li><strong>Record the test width.</strong> Enter the planned positive Y translation (point 1 → point 2) as <strong>Commanded test width</strong>.</li>
+      <li><strong>Record the test length.</strong> Enter the planned positive X translation (point 2 → point 3) as <strong>Commanded test length</strong>.</li>
     </ol>
+    <p className="section-description"><strong>Choose one marking method:</strong> run the generated program below, or follow the manual sequence. Both use the same width and length.</p>
+    <details className="marking-program"><summary>Option A · Run the generated program</summary><ol className="marking-steps">
+      <li><strong>Set the feed rates.</strong> Use machine-approved values in the fields below; the defaults are examples.</li>
+      <li><strong>Download the program.</strong> Use Download G-code under Review Mach3 program.</li>
+      <li><strong>Load the file in Mach3.</strong> The program assumes your current X/Y location is point 1 and work Z = 0 is the bed surface.</li>
+      <li><strong>Review the toolpath extents.</strong> The path must fit within travel limits and the cleared sacrificial surface.</li>
+      <li><strong>Enable Single Block.</strong> Use Mach3's single-block control for initial verification.</li>
+      <li><strong>Start the reviewed program.</strong> Use Cycle Start for each block, waiting for motion to finish before continuing. It marks 1 → 2 → 3 → 4 and finishes at point 4, Z +10 mm.</li>
+    </ol></details>
+    <details className="marking-program"><summary>Option B · Mark the corners manually</summary><ol className="marking-steps">
+      <li><strong>Mark point 1.</strong> Use the approved non-rotating marking procedure to depress to work Z −1 mm.</li>
+      <li><strong>Lift to work Z +10 mm.</strong> This is 10 mm above the bed surface.</li>
+      <li><strong>Travel right to point 2.</strong> Command +Y by the recorded test width.</li>
+      <li><strong>Mark point 2.</strong> Depress to work Z −1 mm.</li>
+      <li><strong>Lift to work Z +10 mm.</strong></li>
+      <li><strong>Travel forward to point 3.</strong> Command +X by the recorded test length.</li>
+      <li><strong>Mark point 3.</strong> Depress to work Z −1 mm.</li>
+      <li><strong>Lift to work Z +10 mm.</strong></li>
+      <li><strong>Travel left to point 4.</strong> Command −Y by the recorded test width.</li>
+      <li><strong>Mark point 4.</strong> Depress to work Z −1 mm.</li>
+      <li><strong>Lift to work Z +10 mm.</strong></li>
+    </ol></details>
+    <p className="section-description"><strong>Setup requirements:</strong> Approved non-rotating marker; spindle off with accidental start prevented; level sacrificial surface approved for 1 mm impressions; no brads or obstructions in the path; soft limits enabled. Use the intended work coordinate system, not Machine Coordinates, with tool-length compensation established. Account for paper/plate thickness during touch-off. Keep offsets and compensation unchanged after zeroing. Positive Z must lift; Z +10 must clear the entire path and fit within travel. Otherwise do not run. All manual Z values above are in mm; convert if Mach3 is displaying inches.</p>
     <div className="input-grid marking-feeds">
       <label htmlFor="plunge-feed">Marking feed (mm/min)<input id="plunge-feed" inputMode="decimal" value={plungeFeed} onChange={(event) => { setPlungeFeed(event.target.value); setCopyMessage(''); }} /></label>
       <label htmlFor="travel-feed">Retract / translation feed (mm/min)<input id="travel-feed" inputMode="decimal" value={travelFeed} onChange={(event) => { setTravelFeed(event.target.value); setCopyMessage(''); }} /></label>

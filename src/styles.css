@@ -155,6 +155,29 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .workflow li:last-child{padding-bottom:0}
 .workflow strong{display:block;font-size:11px;font-weight:600;padding-top:2px}
 .workflow p{font-size:10px;line-height:1.85;color:#88927e;margin:5px 0 0}
+.procedure-field{margin-top:10px;max-width:260px}
+.edge-zero{display:grid;gap:22px}
+.edge-zero .reference-card{min-height:0}
+.corner-options{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:24px}
+.corner-options button[aria-pressed=true]{background:#174b43;color:#fffefa;border-color:#174b43}
+.edge-inputs{max-width:650px}
+.edge-inputs>label:last-child{grid-column:auto}
+.edge-compensation{margin-top:25px;border-top:1px solid var(--line);padding-top:18px;font-size:12px;color:#6e8064}
+.edge-compensation>strong{display:block;font-size:28px;color:#174b43;margin-top:8px}
+.edge-compensation p{font-size:11px;line-height:1.8}
+.edge-diagrams{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin:24px 0}
+.edge-diagrams h3{font-size:13px;font-weight:600}
+.edge-diagrams p{font-size:10px;color:#7e8c74;line-height:1.8}
+.edge-diagrams svg{width:100%;max-height:310px;font-family:inherit}
+.select-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:320px;background:#eef0ea;padding:22px;border-radius:9px}
+.select-reference{display:grid;place-items:center;border:2px solid;border-radius:50%;width:90px;height:70px;opacity:.35;font-size:12px}
+.select-reference.contact-active{opacity:1;background:#fffefa;box-shadow:0 0 0 4px #dbe3d5}
+.edge-zero .workflow{max-width:800px}
+@media(max-width:720px){.edge-diagrams{grid-template-columns:1fr}.edge-inputs{grid-template-columns:1fr}.select-layout{max-width:100%}}
+.procedure-adjustment{margin-top:10px;padding:12px 14px;border:1px solid #cddcc3;border-radius:6px;background:#f0f5e9}
+.procedure-adjustment>strong{font-size:20px;padding:0;font-variant-numeric:tabular-nums}
+.procedure-adjustment>span{display:block;font-size:12px;color:#355a45;margin-top:5px}
+.workflow .procedure-adjustment-warning{color:#805423;font-weight:600}
 .safety-note{display:flex;gap:12px;align-items:flex-start;background:#f3f0e5;border:1px solid #e6dfc9;border-radius:6px;padding:15px 19px;margin-top:25px}
 .safety-icon{border:1px solid #b49c6b;border-radius:50%;height:17px;width:17px;display:grid;place-items:center;flex-shrink:0;font-size:10px;color:#9a8258;margin-top:1px}
 .safety-note p{font-size:10px;line-height:1.85;color:#928469;margin:0}

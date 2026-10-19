@@ -125,7 +125,16 @@ in Mach3; downloading does not execute any motion.
   Converted pattern moves are rounded to 0.001 mm; feeds are explicitly in
   mm/min and fixed Z depth/clearance remain -1/+10 mm. Free-text notes, settings,
   and protocols are not automatically converted.
-- The current X/Y position is **point 1 (rear left)**; no X/Y zeroing is needed.
+- Start with **Ref All Home** in Mach3, then travel to **point 1 (rear left)**.
+  Touch off on the bed surface, press **Zero Z**, then **Zero X**, then **Zero Y**
+  in work coordinates. These are separate steps. The code uses relative X/Y
+  moves, so zeroing X/Y establishes a convenient reference without changing
+  its path.
+- Record **Y translation as commanded test width** and **X translation as
+  commanded test length**. Choose either the generated-code procedure or the
+  separate manual corner-marking sequence; each displayed step has one action.
+  The squaring routine includes inline width, length, and diagonal entry fields
+  synchronized with the main form, unit toggle, and live calculation.
 - In the intended work coordinate system with the marker fitted and intended
   tool-length compensation established, touch off using the approved procedure.
   At actual surface contact, use **Zero Z** on the work Z DRO, not machine
@@ -152,6 +161,26 @@ in Mach3; downloading does not execute any motion.
 
 The generated program is not verified against a physical machine. An authorized
 operator must review it against the machine's configuration and local procedure.
+
+## Pickup-dowel edge zero
+
+The **Dowel edge zero** aid maps the user's four colored Mach3 Select references
+to workpiece contacts: 1 outside front (gray, upper right), 2 outside left
+(yellow, lower right), 3 inside left (green, upper left), 4 inside front (orange,
+lower left). Choose the outside left/front zero (1 + 2) or inside left/front
+zero (3 + 4). The drawing uses +X toward the front and +Y right.
+
+Defaults are a 1/4-inch dowel and 0.004-inch paper, with editable diameter and
+paper/feeler thickness, metric/inch display and fractional inch inputs. Effective
+offset is diameter / 2 + paper thickness. At paper contact the manual work DRO
+values are outside X positive / Y negative, inside X negative / Y positive.
+The physical dowel center, not its side, becomes the X/Y reference. Z is unchanged.
+
+The original Mach3 screen/wizard is unidentified. Its Select actions and automatic
+compensation have **not** been verified. The app provides a schematic mapping,
+not a replica/controller, and warns not to apply compensation twice. Manual DRO
+values are an alternative, not extra offsets to apply after a Select action.
+Parameters are in-memory only and reset when leaving this tool.
 
 ## Validate
 

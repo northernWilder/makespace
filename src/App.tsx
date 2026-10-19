@@ -4,8 +4,9 @@ import { calculate, correctionDirection, initialInputs, type CalibrationInputs, 
 import { formatDistance, inputsForDisplay, inputToMm, type Unit } from './units';
 import { cloud, type Entry, type EntryKind } from './cloud';
 import MarkingGuide from './MarkingGuide';
+import DowelZeroGuide from './DowelZeroGuide';
 
-type Tab = 'calibration' | 'history' | 'note' | 'setting' | 'protocol';
+type Tab = 'calibration' | 'edge-zero' | 'history' | 'note' | 'setting' | 'protocol';
 const resourceLabels = { note: 'Notes', setting: 'Settings', protocol: 'Protocols' };
 const inputLabels: Record<keyof CalibrationInputs, string> = {
   width: 'Commanded test width',
@@ -236,6 +237,13 @@ function App() {
     setBody('');
   }
 
+  function procedureField(key: keyof CalibrationInputs) {
+    return <label className="procedure-field" htmlFor={`procedure-${key}`}>{inputLabels[key]}
+      <div className="input-with-unit"><input id={`procedure-${key}`} type={unit === 'in' ? 'text' : 'number'} min="0" step="any" value={displayInputs[key]} onChange={(event) => changeMeasurement(key, event.target.value)} /><span>{unit}</span></div>
+      {unit === 'in' && <small>Fractions welcome: 3/8 or 42 3/8.</small>}
+    </label>;
+  }
+
   function renderEntries(kind: EntryKind) {
     const filtered = entries.filter((entry) => entry.kind === kind);
     if (!authReady || (userId && loading)) return <p className="empty-state">Loading your toolbook…</p>;
@@ -268,6 +276,7 @@ function App() {
       <nav aria-label="CNC router aids">
         <div className="nav-group-label">MACHINE AIDS</div>
         <button className={tab === 'calibration' ? 'nav-item active' : 'nav-item'} onClick={() => switchTab('calibration')}><Icon name="square" />Gantry squaring</button>
+        <button className={tab === 'edge-zero' ? 'nav-item active' : 'nav-item'} onClick={() => switchTab('edge-zero')}><Icon name="router" />Dowel edge zero</button>
         <button className={tab === 'history' ? 'nav-item active' : 'nav-item'} onClick={() => switchTab('history')}><Icon name="clock" />Calibration history</button>
         <div className="nav-group-label reference-label">YOUR REFERENCE</div>
         {(['note', 'setting', 'protocol'] as const).map((kind) => <button key={kind} className={tab === kind ? 'nav-item active' : 'nav-item'} onClick={() => switchTab(kind)}><Icon name={kind} />{resourceLabels[kind]}</button>)}
@@ -277,7 +286,7 @@ function App() {
     <div className="main-shell">
       <header className="topbar"><div><span className="breadcrumb-muted">Machines</span><span className="breadcrumb-slash">/</span>CNC router</div><button className="account-button" onClick={() => setAccountOpen(!accountOpen)}><Icon name="user" size={17} /><span>{!authReady ? 'Connecting…' : session ? 'My account' : 'Sign in'}</span></button></header>
       <main>
-        <div className="page-heading"><div><div className="eyebrow"><span /> CNC ROUTER TOOLBOOK</div><h1>{tab === 'calibration' ? 'A square gantry. A better cut.' : tab === 'history' ? 'Measure. Adjust. Keep a record.' : `Your machine. Your ${resourceLabels[tab].toLowerCase()}.`}</h1><p>{tab === 'calibration' ? 'Measure the diagonals, find the skew, and dial in your left homing switch.' : 'Keep the details that make your next workshop session a little easier.'}</p></div><span className="machine-tag">Gantry-style CNC <span>·</span> Dual −X switches</span></div>
+        <div className="page-heading"><div><div className="eyebrow"><span /> CNC ROUTER TOOLBOOK</div><h1>{tab === 'calibration' ? 'A square gantry. A better cut.' : tab === 'edge-zero' ? 'Find your edge. Set your zero.' : tab === 'history' ? 'Measure. Adjust. Keep a record.' : `Your machine. Your ${resourceLabels[tab].toLowerCase()}.`}</h1><p>{tab === 'calibration' ? 'Measure the diagonals, find the skew, and dial in your left homing switch.' : tab === 'edge-zero' ? 'A pickup-dowel and paper reference for outside and inside work zeros.' : 'Keep the details that make your next workshop session a little easier.'}</p></div><span className="machine-tag">Gantry-style CNC <span>·</span> Dual −X switches</span></div>
         {error && <div className="message error" role="alert">{error}<button className="text-button" onClick={() => setError('')}>Dismiss</button></div>}
         {notice && <div className="message success" role="status">{notice}</div>}
         {accountOpen && <section className="card account-panel" aria-labelledby="account-title"><div className="section-heading"><h2 id="account-title">{session ? 'Your cloud toolbook' : 'Take your toolbook with you'}</h2><button className="text-button" onClick={() => setAccountOpen(false)}>Close</button></div>
@@ -286,7 +295,7 @@ function App() {
               : <form onSubmit={(event) => void signIn(event)}><p>Owner sign-in only. Get an email link for your existing account; this form does not create accounts. Your notes and calibrations stay private to your account.</p><div className="auth-form"><label>Email address<input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" /></label><button className="button primary" disabled={authBusy || !authReady}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button></div>{authMessage && <p role="status" className="auth-message">{authMessage}</p>}</form>}
         </section>}
         <div className="page-tabs" role="navigation" aria-label="Calibration views"><button className={tab === 'calibration' ? 'selected' : ''} onClick={() => switchTab('calibration')}><Icon name="square" size={17} />Squaring calculator</button><button className={tab === 'history' ? 'selected' : ''} onClick={() => switchTab('history')}><Icon name="clock" size={17} />History</button><div className="unit-toggle"><span className="unit-toggle-label">Display units</span><button className="unit-switch" role="switch" aria-checked={unit === 'in'} aria-label="Display units in inches" onClick={() => changeUnit(unit === 'mm' ? 'in' : 'mm')}><span className={unit === 'mm' ? 'unit-current' : ''}>mm</span><span className="unit-switch-track" aria-hidden="true"><span /></span><span className={unit === 'in' ? 'unit-current' : ''}>inches</span></button></div></div>
-        {tab === 'calibration' ? <>
+        {tab === 'edge-zero' ? <DowelZeroGuide unit={unit} /> : tab === 'calibration' ? <>
           <div className="calibration-layout">
             <div className="calculator-column">
               <section className="card measurement-card">
@@ -333,13 +342,35 @@ function App() {
             </div>
             <div className="guide-column">
               <section className="card diagram-card"><div className="section-heading"><h2>Know your corners</h2><span className="view-tag">TOP VIEW</span></div><BedDiagram result={result} /><div className="diagram-legend"><span><i className="legend-line a-line" />Diagonal A · 1 → 3</span><span><i className="legend-line b-line" />Diagonal B · 2 → 4</span></div><div className="diagram-footnote">Facing the machine from the front. Skew exaggerated; diagram not to scale.</div></section>
-              <section className="card workflow-card"><div className="section-heading"><h2>The squaring routine</h2><span className="subtle-label">6 steps</span></div><ol className="workflow">
-                <li><strong>Home & mark</strong><p>Home both gantry ends independently using the machine's approved procedure. Mark all four corners on a secured sacrificial surface. Record the controller travel used for the test width and length, not absolute coordinates.</p></li>
-                <li><strong>Set your brads</strong><p>Park the spindle safely. Isolate motion per workshop procedure before reaching in. Place a small brad at each mark without shifting its center.</p></li>
-                <li><strong>Measure A & B</strong><p>Use a tape to measure each diagonal twice, center to center. Enter these physical measurements and the physically measured homing span; take test width and length from controller travel.</p></li>
-                <li><strong>Adjust the left switch</strong><p>With power isolated as required, shift the left homing trigger point in the indicated direction. Verify the switch mechanism moves the trigger point the same way.</p></li>
-                <li><strong>Re-home & repeat</strong><p>Remove brads and tools before motion. Re-home both ends, make fresh marks, and re-measure. If the difference grows, stop and check direction and homing behavior.</p></li>
-                <li><strong>Save your result</strong><p>Repeat until within tolerance. Record the final run, what you moved, and any observations.</p></li>
+              <section className="card workflow-card"><div className="section-heading"><h2>The squaring routine</h2></div><ol className="workflow">
+                <li><strong>Press Ref All Home in Mach3.</strong></li>
+                <li><strong>Travel to point 1.</strong><p>Use the rear-left starting corner.</p></li>
+                <li><strong>Touch off on the bed surface.</strong><p>Use the approved method with the non-rotating marker.</p></li>
+                <li><strong>Press Zero Z.</strong><p>Set work Z = 0 at the actual bed surface.</p></li>
+                <li><strong>Press Zero X.</strong><p>Zero work coordinates, not machine coordinates.</p></li>
+                <li><strong>Press Zero Y.</strong></li>
+                <li><strong>Record Y travel as test width.</strong>{procedureField('width')}</li>
+                <li><strong>Record X travel as test length.</strong>{procedureField('length')}</li>
+                <li><strong>Mark the four corners.</strong><p>Follow the generated-code or manual option in the Mach3 guide.</p></li>
+                <li><strong>Park the marker clear.</strong></li>
+                <li><strong>Isolate machine motion.</strong><p>Follow the workshop procedure before reaching in.</p></li>
+                <li><strong>Place a brad at each impression.</strong></li>
+                <li><strong>Measure and enter diagonal A.</strong><p>Point 1 → point 3, center to center.</p>{procedureField('diagonalA')}</li>
+                <li><strong>Measure and enter diagonal B.</strong><p>Point 2 → point 4, center to center.</p>{procedureField('diagonalB')}</li>
+                <li><strong>Save this calibration run.</strong></li>
+                <li><strong>Adjust the left switch if needed.</strong>
+                  <div className="procedure-adjustment" aria-live="polite">
+                    {result.status === 'valid' ? <>
+                      <strong>{distance(Math.abs(result.adjustment))} {unit}</strong>
+                      <span>{result.adjustment === 0 ? 'No movement' : result.adjustment > 0 ? 'Forwards (towards front)' : 'Backwards (towards wall)'}</span>
+                      {result.geometryWarning ? <p className="procedure-adjustment-warning">Check measurements — reference only; do not adjust until resolved.</p>
+                        : result.withinTolerance ? <p>Within tolerance — no adjustment needed.</p> : null}
+                    </> : <p>{result.status === 'invalid' ? 'Correct the measurement inputs to calculate the adjustment.' : 'Enter both diagonals to calculate the adjustment.'}</p>}
+                  </div>
+                  <p>Leave the right switch fixed. Isolate power as required before adjustment.</p>
+                </li>
+                <li><strong>Remove all brads and tools.</strong></li>
+                <li><strong>Repeat from Ref All Home.</strong><p>Re-establish the starting point and surface zero. Stop if the diagonal difference grows.</p></li>
               </ol></section>
             </div>
           </div>
